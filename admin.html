@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin Dashboard</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="nav"><a class="brand" href="index.html"><img src="assets/logo.png"></a><nav><a href="index.html">Home</a><a href="flights.html">Flights</a><a href="my-bookings.html">My Bookings</a><a href="admin.html">Admin</a></nav></header>
+<main class="admin-layout">
+  <aside class="sidebar"><img src="assets/logo.png"><button onclick="showAdmin('dashboard')">Dashboard</button><button onclick="showAdmin('newFlight')">New Flight</button><button onclick="showAdmin('seats')">Seat Management</button><button onclick="showAdmin('bookings')">Bookings</button><button onclick="adminLogout()">Logout</button></aside>
+  <section class="admin-main">
+    <div id="adminLogin" class="panel narrow-panel"><h1>Admin Login</h1><p>Enter admin username and password.</p><input id="adminUser" placeholder="Username"><input id="adminPass" type="password" placeholder="Password"><button class="btn wide" onclick="adminLogin()">Login</button><p class="small">This simple version works without Replit, Discord OAuth, or Firebase.</p></div>
+    <div id="adminContent" class="hidden"></div>
+  </section>
+</main>
+<script src="app.js"></script><script>initAdmin();</script>
+</body></html>

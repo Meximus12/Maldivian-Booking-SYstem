@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Book Flight</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="nav"><a class="brand" href="index.html"><img src="assets/logo.png"></a><nav><a href="index.html">Home</a><a href="flights.html">Flights</a><a href="my-bookings.html">My Bookings</a><a href="admin.html">Admin</a></nav></header>
+<main class="page narrow"><div class="panel"><p class="eyebrow">Free booking</p><h1>Confirm Booking</h1><div id="bookingFlight"></div><label>Passenger / Roblox Name</label><input id="passengerName" placeholder="Enter Roblox username"><label>Discord ID</label><input id="discordId" placeholder="Your Discord ID"><button class="btn wide" onclick="confirmBooking()">Confirm Free Booking</button><p class="small">Fare: <b>0 Robux</b>. Seat is assigned automatically.</p></div></main>
+<script src="app.js"></script><script>renderBookingPage();</script>
+</body></html>
