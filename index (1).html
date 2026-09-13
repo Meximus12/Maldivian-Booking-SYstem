@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maldivian Roblox — Book a Flight</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="field-glow"></div>
+
+<header>
+  <nav class="nav wrap">
+    <a href="#top" class="brand">
+      <img src="assets/maldivian-logo.png" alt="Maldivian Roblox logo">
+      <span class="brand-text">Maldivian<small>ROBLOX AVIATION</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="#flights">Flights</a>
+      <a href="#fleet">Fleet</a>
+      <a href="#about">About</a>
+    </div>
+    <a href="admin.html" class="nav-admin">Staff Login</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <img src="assets/maldivian-logo.png" alt="" class="hero-logo">
+      <h1>Fly the islands, <span>the Roblox way.</span></h1>
+      <p class="lede">Book a seat on a scheduled Maldivian Roblox flight, hop in-game with your crew, and touch down on our island routes.</p>
+      <div class="hero-actions">
+        <a href="#flights" class="btn btn-primary">View available flights</a>
+        <a href="https://discord.gg/QrgP9FwaqA" target="_blank" rel="noopener" class="btn btn-ghost">Join the Discord</a>
+      </div>
+      <div class="stat-strip wrap" style="padding:0;margin-top:8px;">
+        <div class="stat-cell">
+          <div class="stat-value" id="stat-total-flights">—</div>
+          <div class="stat-label">Total flights scheduled</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="stat-passengers">—</div>
+          <div class="stat-label">Passengers flown</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value">3</div>
+          <div class="stat-label">Aircraft types in service</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="flights">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="tag">Flights</p>
+        <h2>Available flights</h2>
+        <p>Pick a flight, tell us your Roblox and Discord usernames — no seat selection needed.</p>
+      </div>
+      <div class="flights-list" id="flights-list">
+        <div class="empty-note">Loading flights…</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="fleet">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="tag">Fleet</p>
+        <h2>Aircraft in service</h2>
+        <p>Three aircraft types fly our routes today.</p>
+      </div>
+      <div class="fleet-grid">
+        <div class="fleet-card">
+          <div class="fleet-imgwrap">
+            <img src="assets/atr72.png" alt="ATR 72-600 in Maldivian livery">
+          </div>
+          <div class="fleet-body">
+            <div class="fleet-name">ATR 72-600</div>
+            <div class="fleet-role">Regional turboprop</div>
+          </div>
+        </div>
+        <div class="fleet-card">
+          <div class="fleet-imgwrap">
+            <img src="assets/atr42.png" alt="ATR 42-600 in Maldivian livery">
+          </div>
+          <div class="fleet-body">
+            <div class="fleet-name">ATR 42-600</div>
+            <div class="fleet-role">Short-hop turboprop</div>
+          </div>
+        </div>
+        <div class="fleet-card">
+          <div class="fleet-imgwrap">
+            <img src="assets/a320.png" alt="A320 in Maldivian livery">
+          </div>
+          <div class="fleet-body">
+            <div class="fleet-name">A320</div>
+            <div class="fleet-role">Narrowbody mainline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="wrap about-grid">
+      <div class="about-copy">
+        <div class="section-head" style="margin-bottom:16px;">
+          <p class="tag">About us</p>
+          <h2>A community project, two years running</h2>
+        </div>
+        <p>Maldivian Roblox started two years ago as a small passion project and has been in steady development ever since — new routes, new aircraft, and a community that keeps it flying.</p>
+        <p>We're a fan-made group and are not affiliated with, endorsed by, or connected to the real-world Maldivian airline in any way. All liveries, names, and branding are used respectfully and all credit for the original designs belongs to their respective owners.</p>
+      </div>
+      <div class="disclaimer">
+        <strong>Disclaimer:</strong> This is an independent Roblox community project. We are not the real Maldivian airline and have no affiliation with them. Any resemblance to real liveries or branding is a tribute, not a claim of ownership.
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <span>Maldivian Roblox — an independent fan-made aviation community.</span>
+    <div style="display:flex;gap:20px;">
+      <a href="https://discord.gg/QrgP9FwaqA" target="_blank" rel="noopener">Discord</a>
+      <a href="admin.html">Staff Login</a>
+    </div>
+  </div>
+</footer>
+
+<dialog id="booking-dialog">
+  <div class="modal-inner" id="modal-body">
+    <!-- filled by JS -->
+  </div>
+</dialog>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  const flightsListEl = document.getElementById('flights-list');
+  const dialog = document.getElementById('booking-dialog');
+  const modalBody = document.getElementById('modal-body');
+  let currentFlights = [];
+
+  function renderFlights(){
+    const available = currentFlights.filter(f => f.status === 'scheduled' && (f.bookedCount || 0) < f.seats);
+    if(available.length === 0){
+      flightsListEl.innerHTML = '<div class="empty-note">No flights available right now — check back soon or ask in Discord.</div>';
+      return;
+    }
+    available.sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+    flightsListEl.innerHTML = available.map(f => {
+      const seatsLeft = f.seats - (f.bookedCount || 0);
+      return `
+        <div class="flight-row">
+          <div class="flight-date">${escapeHtml(f.date || 'TBD')}</div>
+          <div>
+            <div class="flight-route">${escapeHtml(f.from)} → ${escapeHtml(f.to)}</div>
+            <div class="flight-meta">${escapeHtml(f.aircraft)}</div>
+          </div>
+          <div class="flight-seats"><strong>${seatsLeft}</strong> of ${f.seats} seats left</div>
+          <button class="btn btn-primary btn-small" onclick="openBooking('${f.id}')">Book flight</button>
+        </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(str){
+    return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  db.collection('flights').onSnapshot(snap => {
+    currentFlights = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderFlights();
+    updateStats();
+  }, err => {
+    flightsListEl.innerHTML = '<div class="empty-note">Could not load flights. If you just set this site up, make sure firebase-config.js has your real project keys.</div>';
+    console.error(err);
+  });
+
+  function updateStats(){
+    document.getElementById('stat-total-flights').textContent = currentFlights.length;
+    const passengers = currentFlights
+      .filter(f => f.status === 'completed')
+      .reduce((sum, f) => sum + (f.bookedCount || 0), 0);
+    document.getElementById('stat-passengers').textContent = passengers;
+  }
+
+  window.openBooking = function(flightId){
+    const f = currentFlights.find(x => x.id === flightId);
+    if(!f) return;
+    modalBody.innerHTML = `
+      <h3>Book this flight</h3>
+      <p class="modal-sub">${escapeHtml(f.from)} → ${escapeHtml(f.to)} · ${escapeHtml(f.date)} · ${escapeHtml(f.aircraft)}</p>
+      <div id="modal-error" class="modal-error" style="display:none;"></div>
+      <div class="form-field">
+        <label for="roblox-user">Roblox username</label>
+        <input id="roblox-user" type="text" autocomplete="off" placeholder="e.g. Flyer123">
+      </div>
+      <div class="form-field">
+        <label for="discord-user">Discord username</label>
+        <input id="discord-user" type="text" autocomplete="off" placeholder="e.g. flyer123">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeBooking()">Cancel</button>
+        <button class="btn btn-primary" id="confirm-booking-btn" onclick="submitBooking('${f.id}')">Confirm booking</button>
+      </div>
+    `;
+    dialog.showModal();
+  };
+
+  window.closeBooking = function(){ dialog.close(); };
+
+  window.submitBooking = async function(flightId){
+    const robloxUser = document.getElementById('roblox-user').value.trim();
+    const discordUser = document.getElementById('discord-user').value.trim();
+    const errEl = document.getElementById('modal-error');
+    const btn = document.getElementById('confirm-booking-btn');
+    if(!robloxUser || !discordUser){
+      errEl.textContent = 'Please fill in both your Roblox and Discord usernames.';
+      errEl.style.display = 'block';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Booking…';
+    try{
+      const flightRef = db.collection('flights').doc(flightId);
+      await db.collection('bookings').add({
+        flightId: flightId,
+        robloxUsername: robloxUser,
+        discordUsername: discordUser,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      const snap = await flightRef.get();
+      const current = snap.data();
+      await flightRef.update({ bookedCount: (current.bookedCount || 0) + 1 });
+
+      modalBody.innerHTML = `
+        <div class="modal-success">
+          <div class="checkmark">✅</div>
+          <h3>You're booked!</h3>
+          <p class="modal-sub">Now join the Discord so we can reach you before departure.</p>
+          <a href="https://discord.gg/QrgP9FwaqA" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;margin-top:6px;">Join the Discord</a>
+        </div>`;
+    }catch(e){
+      console.error(e);
+      errEl.textContent = 'Something went wrong booking that flight. Please try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Confirm booking';
+    }
+  };
+</script>
+</body>
+</html>

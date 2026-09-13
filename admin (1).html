@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maldivian Roblox — Staff Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="field-glow"></div>
+
+<header>
+  <nav class="nav wrap">
+    <a href="index.html" class="brand">
+      <img src="assets/maldivian-logo.png" alt="Maldivian Roblox logo">
+      <span class="brand-text">Maldivian<small>STAFF DASHBOARD</small></span>
+    </a>
+    <button class="nav-admin" id="logout-btn" style="display:none;border:none;background:transparent;cursor:pointer;">Log out</button>
+  </nav>
+</header>
+
+<div id="login-view" class="login-shell">
+  <div class="login-card">
+    <h1>Staff login</h1>
+    <p>Enter the staff username and password to manage flights.</p>
+    <div id="login-error" class="modal-error" style="display:none;"></div>
+    <div class="form-field">
+      <label for="login-user">Username</label>
+      <input id="login-user" type="text" autocomplete="username">
+    </div>
+    <div class="form-field">
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;" id="login-btn">Log in</button>
+  </div>
+</div>
+
+<div id="dashboard-view" class="admin-shell" style="display:none;">
+  <div class="admin-header">
+    <h1>Flight operations</h1>
+    <a href="index.html" class="btn btn-ghost btn-small">View public site</a>
+  </div>
+
+  <div class="admin-card">
+    <h2>Add a flight</h2>
+    <div id="add-flight-error" class="modal-error" style="display:none;"></div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="f-date">Date</label>
+        <input id="f-date" type="date">
+      </div>
+      <div class="form-field">
+        <label for="f-aircraft">Aircraft</label>
+        <select id="f-aircraft">
+          <option>ATR 72-600</option>
+          <option>ATR 42-600</option>
+          <option>A320</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="f-from">From</label>
+        <input id="f-from" type="text" placeholder="e.g. Male">
+      </div>
+      <div class="form-field">
+        <label for="f-to">To</label>
+        <input id="f-to" type="text" placeholder="e.g. Addu City">
+      </div>
+      <div class="form-field">
+        <label for="f-seats">Seats</label>
+        <input id="f-seats" type="number" min="1" value="12">
+      </div>
+      <div class="form-field">
+        <button class="btn btn-primary" id="add-flight-btn">Add flight</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2>All flights</h2>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Date</th><th>Route</th><th>Aircraft</th><th>Seats</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="flights-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  // Simple staff login. This hides the dashboard from casual visitors but is not
+  // cryptographic security — the credentials live in this page's source code.
+  const ADMIN_USERNAME = "YOOAAN1234";
+  const ADMIN_PASSWORD = "Frosty@1";
+
+  const loginView = document.getElementById('login-view');
+  const dashboardView = document.getElementById('dashboard-view');
+  const logoutBtn = document.getElementById('logout-btn');
+  let currentFlights = [];
+  let openBookingsFor = null;
+
+  function showDashboard(){
+    loginView.style.display = 'none';
+    dashboardView.style.display = 'block';
+    logoutBtn.style.display = 'inline-flex';
+    listenFlights();
+  }
+  function showLogin(){
+    loginView.style.display = 'block';
+    dashboardView.style.display = 'none';
+    logoutBtn.style.display = 'none';
+  }
+
+  if(sessionStorage.getItem('mv_staff_logged_in') === 'true'){
+    showDashboard();
+  }else{
+    showLogin();
+  }
+
+  document.getElementById('login-btn').addEventListener('click', () => {
+    const username = document.getElementById('login-user').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    if(username === ADMIN_USERNAME && password === ADMIN_PASSWORD){
+      errEl.style.display = 'none';
+      sessionStorage.setItem('mv_staff_logged_in', 'true');
+      showDashboard();
+    }else{
+      errEl.textContent = 'Incorrect username or password.';
+      errEl.style.display = 'block';
+    }
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    sessionStorage.removeItem('mv_staff_logged_in');
+    showLogin();
+  });
+
+  document.getElementById('add-flight-btn').addEventListener('click', async () => {
+    const date = document.getElementById('f-date').value;
+    const aircraft = document.getElementById('f-aircraft').value;
+    const from = document.getElementById('f-from').value.trim();
+    const to = document.getElementById('f-to').value.trim();
+    const seats = parseInt(document.getElementById('f-seats').value, 10);
+    const errEl = document.getElementById('add-flight-error');
+    errEl.style.display = 'none';
+    if(!date || !from || !to || !seats || seats < 1){
+      errEl.textContent = 'Please fill in date, from, to, and a valid seat count.';
+      errEl.style.display = 'block';
+      return;
+    }
+    try{
+      await db.collection('flights').add({
+        date, aircraft, from, to, seats,
+        bookedCount: 0,
+        status: 'scheduled',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('f-from').value = '';
+      document.getElementById('f-to').value = '';
+    }catch(e){
+      errEl.textContent = 'Could not add flight: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  });
+
+  function listenFlights(){
+    db.collection('flights').onSnapshot(snap => {
+      currentFlights = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      currentFlights.sort((a,b) => (a.date || '').localeCompare(b.date || ''));
+      renderTable();
+    });
+  }
+
+  function badgeFor(status){
+    if(status === 'completed') return '<span class="badge badge-completed">Completed</span>';
+    if(status === 'cancelled') return '<span class="badge badge-cancelled">Cancelled</span>';
+    return '<span class="badge badge-scheduled">Scheduled</span>';
+  }
+
+  function escapeHtml(str){
+    return String(str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+
+  function renderTable(){
+    const tbody = document.getElementById('flights-tbody');
+    if(currentFlights.length === 0){
+      tbody.innerHTML = '<tr><td colspan="6" class="muted">No flights yet — add one above.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = currentFlights.map(f => `
+      <tr>
+        <td>${escapeHtml(f.date)}</td>
+        <td>${escapeHtml(f.from)} → ${escapeHtml(f.to)}</td>
+        <td>${escapeHtml(f.aircraft)}</td>
+        <td>${f.bookedCount || 0} / ${f.seats}</td>
+        <td>${badgeFor(f.status)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="link-btn" onclick="toggleBookings('${f.id}')">Bookings</button>
+            ${f.status === 'scheduled' ? `<button class="link-btn" onclick="markCompleted('${f.id}')">Mark completed</button>` : ''}
+            ${f.status === 'scheduled' ? `<button class="link-btn" onclick="cancelFlight('${f.id}')">Cancel</button>` : ''}
+            <button class="link-btn" style="color:#a8949a;" onclick="deleteFlight('${f.id}')">Delete</button>
+          </div>
+          <div id="bookings-${f.id}"></div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  window.toggleBookings = async function(flightId){
+    const el = document.getElementById('bookings-' + flightId);
+    if(openBookingsFor === flightId){
+      el.innerHTML = '';
+      openBookingsFor = null;
+      return;
+    }
+    openBookingsFor = flightId;
+    el.innerHTML = '<div class="bookings-panel muted">Loading bookings…</div>';
+    const snap = await db.collection('bookings').where('flightId', '==', flightId).get();
+    if(snap.empty){
+      el.innerHTML = '<div class="bookings-panel muted">No bookings yet.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="bookings-panel">' + snap.docs.map(d => {
+      const b = d.data();
+      return `<div>Roblox: <strong>${escapeHtml(b.robloxUsername)}</strong> · Discord: <strong>${escapeHtml(b.discordUsername)}</strong></div>`;
+    }).join('') + '</div>';
+  };
+
+  window.markCompleted = function(flightId){
+    db.collection('flights').doc(flightId).update({ status: 'completed' });
+  };
+  window.cancelFlight = function(flightId){
+    db.collection('flights').doc(flightId).update({ status: 'cancelled' });
+  };
+  window.deleteFlight = function(flightId){
+    if(confirm('Delete this flight permanently?')){
+      db.collection('flights').doc(flightId).delete();
+    }
+  };
+</script>
+</body>
+</html>
